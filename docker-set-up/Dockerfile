@@ -1,17 +1,18 @@
-FROM nvidia/cuda:10.1-base-ubuntu16.04
+FROM nvidia/cuda:11.8.0-base-ubuntu20.04
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update; 
+RUN apt-get update && apt-get install -y \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get install -y wget; \
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh; \
-    bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda;\
-    eval "$(/root/miniconda/bin/conda shell.bash hook)";\
-    conda init; \
-    pip install pyyaml; \
-    conda install -y pytorch cudatoolkit=10.0 -c pytorch; \
-    conda install -y matplotlib pandas scikit-learn; 
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+    bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda && \
+    eval "$(/root/miniconda/bin/conda shell.bash hook)" && \
+    conda init && \
+    pip install pyyaml && \
+    conda install -y pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia && \
+    conda install -y matplotlib pandas scikit-learn
 
 WORKDIR /evolveGCN
 ENTRYPOINT /bin/bash

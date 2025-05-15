@@ -4,6 +4,8 @@ import logger
 import time
 import pandas as pd
 import numpy as np
+import os
+import logging
 
 class Trainer():
 	def __init__(self,args, splitter, gcn, classifier, comp_loss, dataset, num_classes):
@@ -35,7 +37,13 @@ class Trainer():
 		self.gcn_opt.zero_grad()
 		self.classifier_opt.zero_grad()
 
-	def save_checkpoint(self, state, filename='checkpoint.pth.tar'):
+	def save_checkpoint(self, state, filename='checkpoint.pkl'):
+		# GCN 모델의 파라미터를 직접 저장
+		if 'gcn_dict' in state:
+			gcn_params = {}
+			for i, param in enumerate(self.gcn.parameters()):
+				gcn_params[f'param_{i}'] = param.data.clone()
+			state['gcn_dict'] = gcn_params
 		torch.save(state, filename)
 
 	def load_checkpoint(self, filename, model):
@@ -43,14 +51,21 @@ class Trainer():
 			print("=> loading checkpoint '{}'".format(filename))
 			checkpoint = torch.load(filename)
 			epoch = checkpoint['epoch']
-			self.gcn.load_state_dict(checkpoint['gcn_dict'])
+			
+			# GCN 모델의 파라미터를 직접 로드
+			if 'gcn_dict' in checkpoint:
+				gcn_params = checkpoint['gcn_dict']
+				for i, param in enumerate(self.gcn.parameters()):
+					if f'param_{i}' in gcn_params:
+						param.data.copy_(gcn_params[f'param_{i}'])
+			
 			self.classifier.load_state_dict(checkpoint['classifier_dict'])
 			self.gcn_opt.load_state_dict(checkpoint['gcn_optimizer'])
 			self.classifier_opt.load_state_dict(checkpoint['classifier_optimizer'])
-			self.logger.log_str("=> loaded checkpoint '{}' (epoch {})".format(filename, checkpoint['epoch']))
+			logging.info("=> loaded checkpoint '{}' (epoch {})".format(filename, checkpoint['epoch']))
 			return epoch
 		else:
-			self.logger.log_str("=> no checkpoint found at '{}'".format(filename))
+			logging.info("=> no checkpoint found at '{}'".format(filename))
 			return 0
 
 	def train(self):
@@ -59,8 +74,34 @@ class Trainer():
 		eval_valid = 0
 		epochs_without_impr = 0
 
+		# 타임스탬프 생성
+		run_timestamp = time.strftime("%Y%m%d_%H%M%S")
+		
+		# 체크포인트 저장을 위한 디렉토리 구조 생성
+		checkpoint_dir = f'saved_models/EvolveGCN/{self.args.data}-{run_timestamp}'
+		os.makedirs(checkpoint_dir, exist_ok=True)
+
 		for e in range(self.args.num_epochs):
 			eval_train, nodes_embs = self.run_epoch(self.splitter.train, e, 'TRAIN', grad = True)
+			
+			# 각 에폭마다 모델 저장
+			state = {
+				'epoch': e,
+				'gcn_dict': {},  # 빈 딕셔너리로 초기화
+				'classifier_dict': self.classifier.state_dict(),
+				'gcn_optimizer': self.gcn_opt.state_dict(),
+				'classifier_optimizer': self.classifier_opt.state_dict(),
+				'train_metrics': {
+					'loss': eval_train,
+					'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+				}
+			}
+			
+			# 에폭별 체크포인트 저장
+			epoch_checkpoint_path = os.path.join(checkpoint_dir, f'epoch_{e+1}.pkl')
+			self.save_checkpoint(state, epoch_checkpoint_path)
+			logging.info(f"=> saved epoch checkpoint '{epoch_checkpoint_path}'")
+
 			if len(self.splitter.dev)>0 and e>self.args.eval_after_epochs:
 				eval_valid, _ = self.run_epoch(self.splitter.dev, e, 'VALID', grad = False)
 				if eval_valid>best_eval_valid:
