@@ -235,4 +235,8 @@ if __name__ == '__main__':
 						 dataset = dataset,
 						 num_classes = tasker.num_classes)
 
-	trainer.train()
+	if hasattr(args, "test") and args.test:
+		print("Test mode: 학습 없이 테스트만 실행합니다.")
+		trainer.run_epoch(splitter.test, args.load_epoch if hasattr(args, "load_epoch") else 0, 'TEST', grad=False)
+	else:
+		trainer.train()

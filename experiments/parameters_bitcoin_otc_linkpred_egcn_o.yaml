@@ -25,6 +25,15 @@ train_proportion: 0.7 # with train_proportion: 0.715 we have the 70/30% of actua
 dev_proportion: 0.1
 
 num_epochs: 500 #number of passes though the data
+
+# Test mode settings
+# test: True
+# load_epoch: 62
+# load_path: saved_models/EvolveGCN/bitcoinotc-20250514_141926/epoch_62.pkl
+
+# # 학습 관련 파라미터 수정
+# num_epochs: 0  # 학습을 하지 않도록 0으로 설정
+
 steps_accum_gradients: 1
 learning_rate: 0.01
 learning_rate_min: 0.005

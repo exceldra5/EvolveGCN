@@ -4,11 +4,11 @@ uc_irc_args:
   folder: ./data
   tar_file: opsahl-ucsocial.tar.bz2
   edges_file: opsahl-ucsocial/out.opsahl-ucsocial
-  aggr_time: 190080 #216000 #172800, 86400 smaller numbers yields days with no edges
+  aggr_time: 577110 #190080 #216000 #172800, 86400 smaller numbers yields days with no edges
 
 
 use_cuda: True
-use_logfile: False
+use_logfile: True
 
 model: egcn_h
 task: link_pred
